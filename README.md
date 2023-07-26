@@ -1,5 +1,5 @@
 # spca_scraper
-scrapes [SPCA](https://spca.org.sg) with conditional searching and returns a list of prospective pets.
+scrapes [SPCA](https://spca.org.sg) with conditional searching and returns a list of prospective pets up for adoption.
 
 Your use of this scraper is subject to [SPCA](https://spca.org.sg) policy and may be revoked at any time.
 
