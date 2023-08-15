@@ -6,7 +6,7 @@ category_dict = {'none': '', 'cat': 7, 'dog': 8, 'guinea_pig': 34, 'hamster': 19
 age_dict = {'none': '', 'adult': 14, 'young': 12, 'old': 13}
 def find_max_pages(category, age, gender):
     new_url = f"{base_page}?animal_keyword=&animaltype={category_dict[category]}&animalage={age_dict[age]}&animalgender={gender}"
-    print(f"Searching {new_url} category = [{category}] age = [{age}] gender = [{gender}]")
+    print(f"Accessing {new_url}")
 
     loaded = requests.get(new_url)
     soup = BeautifulSoup(loaded.content, "html.parser")
@@ -22,11 +22,14 @@ def find_max_pages(category, age, gender):
             for page in pages:
                 page_no = page.find("a", href=True).text
                 page_nos.append(page_no)
-            return int(max([x for x in page_nos if x.isnumeric()]))
+            return int(max([x for x in page_nos if x.isnumeric()])) 
+            # find how many pages there are, skipping the foward and back buttons
         else:
             return 1
+            # more than 0 pages, but only 1 page found.
     else:
         return 0
+        # no results
 
 
 def search_pets(category, age, gender):
