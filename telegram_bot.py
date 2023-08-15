@@ -1,6 +1,7 @@
 import os, time
 from dotenv import load_dotenv  # Import load_dotenv function from dotenv module.
 
+from telebot import asyncio_filters
 from telebot.async_telebot import AsyncTeleBot
 from telebot.asyncio_storage import StateMemoryStorage
 from telebot.asyncio_handler_backends import State, StatesGroup
@@ -22,22 +23,21 @@ class MyStates(StatesGroup):
 @bot.message_handler(commands=['search'])
 async def start_ex(message):
     text = "Any category for the search? Examples are\n\tcat\n\tdog\n\tguinea pig\n\thamster\n\trabbit\n\tterrapin\n\tother\nsay 'none' to search all"
+    print(message.text)
     await bot.reply_to(message, text)
-    await bot.set_state(message.from_user.id, MyStates.s_category, message.chat.id)
+    await bot.set_state(message.from_user.id, MyStates.s_category)
 
 @bot.message_handler(state="*", commands='cancel')
 async def any_state(message):
-    """
-    Cancel state
-    """
     await bot.send_message(message.chat.id, "Your state was cancelled.")
     await bot.delete_state(message.from_user.id, message.chat.id)
 
 @bot.message_handler(state=MyStates.s_category)
-async def tele_search_pets(message):
+async def category_handler(message):
     async with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
+        print(message.text)
         data['category'] = message.text
-        await bot.set_state(message.from_user.id, MyStates.s_age, message.chat.id)
+        await bot.set_state(message.from_user.id, MyStates.s_age)
         text = "Any preferred age? Examples are\n\tyoung\n\tadult\n\told\nsay 'none' to search all"
         await bot.reply_to(message, text)
 
@@ -45,7 +45,7 @@ async def tele_search_pets(message):
 async def age_handler(message):
     async with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
         data['age'] = message.text
-        await bot.set_state(message.from_user.id, MyStates.s_gender, message.chat.id)
+        await bot.set_state(message.from_user.id, MyStates.s_gender)
         text = "Any preferred gender? Examples are\n\tmale\n\tfemale\nsay 'none' to search all"
         await bot.reply_to(message, text)
 
@@ -77,6 +77,9 @@ async def gender_handler(message):
             print(f"Chat {message.chat.id} entered invalid input")
             await bot.reply_to(message, f"One of your inputs was invalid. Please try again.")
     await bot.delete_state(message.from_user.id, message.chat.id)
+
+bot.add_custom_filter(asyncio_filters.StateFilter(bot))
+bot.add_custom_filter(asyncio_filters.IsDigitFilter())
 
 import asyncio
 asyncio.run(bot.polling())
