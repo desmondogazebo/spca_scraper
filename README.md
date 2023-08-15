@@ -5,6 +5,7 @@ Your use of this scraper is subject to [SPCA](https://spca.org.sg) policy and ma
 
 Use of this script requires a .env file with the token of the bot. You may generate one through @BotFather on Telegram.
 Otherwise, start the use of the bot via the /search command.
+This bot CURRENTLY does not have error handling i.e. incorrect input.
 
 telegram output:
 
