@@ -9,5 +9,5 @@ Otherwise, start the use of the bot via the /search command.
 telegram output:
 
 ![image](https://github.com/desmondogazebo/spca_scraper/assets/13763140/75d9b3cb-379f-4448-b875-c2e9cacb0a27)
-![image](https://github.com/desmondogazebo/spca_scraper/assets/13763140/f6ab4a39-afc3-4e22-b065-e2353454509e)
+![image](https://github.com/desmondogazebo/spca_scraper/assets/13763140/55a36075-3b0f-4460-88f4-d92c7d0585a7)
 
