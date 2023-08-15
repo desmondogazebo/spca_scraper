@@ -81,8 +81,8 @@ def search_pets(category, age, gender):
 def print_results(result_list):
     if len(result_list) != 0:
         fullstring = ''
-        for i in result_list:
-            fullstring += f"\n{i}"
+        for index, item in enumerate(result_list):
+            fullstring += f"\n{index+1}) {item}"
         send_telegram(fullstring)
         print(fullstring)
 
