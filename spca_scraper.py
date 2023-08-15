@@ -1,58 +1,45 @@
-import requests
-from bs4 import BeautifulSoup
+import telebot, os, time
+from dotenv import load_dotenv  # Import load_dotenv function from dotenv module.
+from spca_scraper import search_pets
+from datetime import datetime
 
-base_page = f"https://spca.org.sg/services/adoption/"
-category_dict = {'none': '', 'cat': 7, 'dog': 8, 'guinea_pig': 34, 'hamster': 19, 'other': 100, 'rabbit': 29, 'terrapin': 80}
-age_dict = {'none': '', 'adult': 14, 'young': 12, 'old': 13}
-def find_max_pages(category, age, gender):
-    new_url = f"{base_page}?animal_keyword=&animaltype={category_dict[category]}&animalage={age_dict[age]}&animalgender={gender}"
-    print(f"Accessing {new_url}")
+load_dotenv()
+TELE_TOKEN = os.environ.get("TELE_TOKEN")
+bot = telebot.TeleBot(TELE_TOKEN)
 
-    loaded = requests.get(new_url)
-    soup = BeautifulSoup(loaded.content, "html.parser")
+@bot.message_handler(commands=['search'])
+def tele_search_pets(message):
+    text = "Any category for the search? Examples are\n\tcat\n\tdog\n\tguinea pig\n\thamster\n\trabbit\n\tterrapin\n\tother\nsay 'none' to search all"
+    sent_msg = bot.send_message(message.chat.id, text)
+    bot.register_next_step_handler(sent_msg, age_handler)
 
-    # check if this page has any results at all...
-    has_pet = soup.find("ul", {"class": "search-result-listing"})
-    if has_pet is not None:
-        # handle multipage
-        pages = soup.find_all("li", {"class": "page-item"})
+def age_handler(message):
+    category = message.text
+    text = "Any preferred age? Examples are\n\tyoung\n\tadult\n\told\nsay 'none' to search all"
+    sent_msg = bot.send_message(message.chat.id, text)
+    bot.register_next_step_handler(sent_msg, gender_handler,category)
 
-        if len(pages) > 0:
-            page_nos = []
-            for page in pages:
-                page_no = page.find("a", href=True).text
-                page_nos.append(page_no)
-            return int(max([x for x in page_nos if x.isnumeric()])) 
-            # find how many pages there are, skipping the foward and back buttons
-        else:
-            return 1
-            # more than 0 pages, but only 1 page found.
+def gender_handler(message, category):
+    age = message.text
+    text = "Any preferred gender? Examples are\n\tmale\n\tfemale\nsay 'none' to search all"
+    sent_msg = bot.send_message(message.chat.id, text)
+    bot.register_next_step_handler(sent_msg, pet_finder, age, category)
+
+def pet_finder(message, age, category):
+    gender = message.text
+    start = time.time()
+    result_list = search_pets(category, age, gender)
+    searching_intro = f"Searching for: category = [{category}] age = [{age}] gender = [{gender}], found {len(result_list)} results!"
+
+    print(f"Chat {message.chat.id} @ {datetime.now()} : {searching_intro}")
+    if len(result_list) != 0:
+        fullstring = ''
+        for index, item in enumerate(result_list):
+            fullstring += f"\n{index + 1}) {item}"
+        bot.send_message(message.chat.id, f"{searching_intro}\n{fullstring}", disable_web_page_preview=True, parse_mode='HTML')
+        print(fullstring)
     else:
-        return 0
-        # no results
+        bot.send_message(message.chat.id, f"{searching_intro}")
+    print(f"Took {round(time.time() - start, 3)}s to run")
 
-
-def search_pets(category, age, gender):
-    if category.lower() == "guinea pig": category = "guinea_pig"
-    if gender.lower() == "none": gender = ""
-    end_results = []
-    curr_page = 1
-    max_page = find_max_pages(category, age, gender)
-
-    while curr_page <= max_page:
-        url = f"{base_page}page/{curr_page}/?animal_keyword=&animaltype={category_dict[category]}&animalage={age_dict[age]}&animalgender={gender}"
-        page_results = requests.get(url)
-
-        soup = BeautifulSoup(page_results.content, "html.parser")
-        listings = soup.find('ul', {'class': "search-result-listing"})
-
-        pet_results = listings.find_all("div", {"class": "search-result-item-inner"})
-
-        for pet_result in pet_results:
-            pet_url = pet_result.find("a", href=True)['href']
-            pet_name = pet_result.find("div", {"class": "search-result-title"}).text
-            end_results.append(f"<a href='{pet_url}'>{pet_name}</a>")
-
-        curr_page += 1
-    return end_results
-
+bot.infinity_polling()
