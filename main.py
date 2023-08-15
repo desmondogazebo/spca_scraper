@@ -1,15 +1,39 @@
 import requests
 import time
 from bs4 import BeautifulSoup
+import os
+from dotenv import load_dotenv  # Import load_dotenv function from dotenv module.
+
+load_dotenv()
+TELE_TOKEN = os.getenv("TELE_TOKEN")
+CHAT_DATA = requests.get(f"https://api.telegram.org/bot{TELE_TOKEN}/getUpdates").json()
+def get_chat_ids():
+    chat_ids_list = []
+    print(CHAT_DATA['result'])
+    for chatter in CHAT_DATA['result']:
+        chat_ids_list.append(str(chatter['message']['chat']['id']))
+    print(f"Had {len(chat_ids_list)} users, reduced to {len(list(set(chat_ids_list)))} due to duplicates.") # remove dupes
+    return list(set(chat_ids_list))
+
+CHAT_IDS = get_chat_ids()
 
 base_page = f"https://spca.org.sg/services/adoption/"
 category_dict = {'': '', 'cat': 7, 'dog': 8, 'guinea_pig': 34, 'hamster': 19, 'other': 100, 'rabbit': 29, 'terrapin': 80}
 age_dict = {'': '', 'adult': 14, 'young': 12, 'old': 13}
 
-
+def send_telegram(message):
+    delay = 0.0
+    if len(CHAT_IDS) > 30:
+        delay = len(CHAT_IDS) * 0.035 # this is the lowest amount of time to wait
+    for CHAT_ID in CHAT_IDS:
+        time.sleep(delay)
+        url = f"https://api.telegram.org/bot{TELE_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}"
+        requests.get(url)
 def find_max_pages(category, age, gender):
     new_url = f"{base_page}?animal_keyword=&animaltype={category_dict[category]}&animalage={age_dict[age]}&animalgender={gender}"
-    print(f"Searching {new_url}\nYour conditions are:\n \tcategory= {category}\n\tage= {age}\n\tgender= {gender}")
+    condition_text = f"Your conditions are:\n \tcategory= {category}\n\tage= {age}\n\tgender= {gender}"
+    print(f"Searching {new_url}...\n{condition_text}")
+
     loaded = requests.get(new_url)
     soup = BeautifulSoup(loaded.content, "html.parser")
 
@@ -46,23 +70,31 @@ def search_pets(category, age, gender):
         pet_results = listings.find_all("div", {"class": "search-result-item-inner"})
 
         for pet_result in pet_results:
-            # print(pet_result.prettify())
             pet_url = pet_result.find("a", href=True)['href']
             pet_name = pet_result.find("div", {"class": "search-result-title"}).text
-            end_results.append(f"\t{pet_name} {pet_url}")
+            end_results.append(f"{pet_name} {pet_url}")
 
         curr_page += 1
-
+    send_telegram(f"Searching for: category = [{category}] age = [{age}] gender = [{gender}], found {len(end_results)} results!")
     return end_results
 
+def print_results(result_list):
+    if len(result_list) != 0:
+        fullstring = ''
+        for i in result_list:
+            fullstring += f"\n{i}"
+        send_telegram(fullstring)
+        print(fullstring)
 
-animal_category = input("Any category for the search? Examples are\n\tcat\n\tdog\n\tguinea_pig\n\thamster\n\trabbit\n\tterrapin\n\tother\nLeave blank to search all\n>>")
-animal_age = input("Any preferred age? Examples are\n\tyoung\n\tadult\n\told\nLeave blank to search all\n>>")
-animal_gender = input("Any preferred gender? Examples are\n\tmale\n\tfemale\nLeave blank to search all\n>>")
+# animal_category = input("Any category for the search? Examples are\n\tcat\n\tdog\n\tguinea_pig\n\thamster\n\trabbit\n\tterrapin\n\tother\nLeave blank to search all\n>>")
+# animal_age = input("Any preferred age? Examples are\n\tyoung\n\tadult\n\told\nLeave blank to search all\n>>")
+# animal_gender = input("Any preferred gender? Examples are\n\tmale\n\tfemale\nLeave blank to search all\n>>")
 
 start = time.time()
-result_list = search_pets(animal_category, animal_age, animal_gender)
-print(f"{len(result_list)} results found:")
-for i in result_list:
-    print(i)
-print(f"took {round(time.time() - start, 2)}s to run")
+animal_list = ['cat', 'dog']
+for animal in animal_list:
+    # result_list = search_pets(animal_category, animal_age, animal_gender)
+    pet_list = search_pets(animal, "young", "")
+    print_results(pet_list)
+
+print(f"Sent messages to {len(CHAT_IDS)} users. Total run time = {round(time.time() - start, 2)}s")
