@@ -1,6 +1,7 @@
-import telebot, os
+import telebot, os, time
 from dotenv import load_dotenv  # Import load_dotenv function from dotenv module.
-from spca_scraper import search_pets
+from spca_scraper import search_pets, validate_search
+from datetime import datetime
 
 load_dotenv()
 TELE_TOKEN = os.environ.get("TELE_TOKEN")
@@ -26,15 +27,25 @@ def gender_handler(message, category):
 
 def pet_finder(message, age, category):
     gender = message.text
-    result_list = search_pets(category, age, gender)
-    searching_intro = f"Searching for: category = [{category}] age = [{age}] gender = [{gender}], found {len(result_list)} results!"
-    if len(result_list) != 0:
-        fullstring = ''
-        for index, item in enumerate(result_list):
-            fullstring += f"\n{index + 1}) {item}"
-        bot.send_message(message.chat.id, f"{searching_intro}\n{fullstring}", disable_web_page_preview=True, parse_mode='HTML')
-        print(fullstring)
+    # handle error checking here?
+    if validate_search(category, age, gender):
+        start = time.time()
+        searching_intro = f"Searching for: category = [{category.lower()}] age = [{age.lower()}] gender = [{gender.lower()}]"
+        result_list = search_pets(category.lower(), age.lower(), gender.lower())
+        found_intro = f"Found {len(result_list)} results!"
+
+        print(f"Chat {message.chat.id} @ {datetime.now()}:\n\t{searching_intro}\n\t{found_intro}")
+        if len(result_list) != 0:
+            fullstring = ''
+            for index, item in enumerate(result_list):
+                fullstring += f"\n{index + 1}) {item}"
+            bot.send_message(message.chat.id, f"{searching_intro}\n{fullstring}", disable_web_page_preview=True, parse_mode='HTML')
+            print(fullstring)
+        else:
+            bot.send_message(message.chat.id, f"{searching_intro}\n{found_intro}")
+        print(f"Took {round(time.time() - start, 3)}s to run")
     else:
-        bot.send_message(message.chat.id, f"{searching_intro}")
+        print(f"Chat {message.chat.id} entered invalid input")
+        bot.send_message(message.chat.id, f"One of your inputs was invalid. Please try again.")
 
 bot.infinity_polling()
