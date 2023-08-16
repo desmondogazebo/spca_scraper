@@ -23,19 +23,18 @@ class MyStates(StatesGroup):
 @bot.message_handler(commands=['search'])
 async def start_ex(message):
     text = "Any category for the search? Examples are\n\tcat\n\tdog\n\tguinea pig\n\thamster\n\trabbit\n\tterrapin\n\tother\nsay 'none' to search all"
-    print(message.text)
     await bot.reply_to(message, text)
     await bot.set_state(message.from_user.id, MyStates.s_category)
 
 @bot.message_handler(state="*", commands='cancel')
 async def any_state(message):
+    print(f"Chat {message.chat.id} cancelled input")
     await bot.send_message(message.chat.id, "Your state was cancelled.")
     await bot.delete_state(message.from_user.id, message.chat.id)
 
 @bot.message_handler(state=MyStates.s_category)
 async def category_handler(message):
     async with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
-        print(message.text)
         data['category'] = message.text
         await bot.set_state(message.from_user.id, MyStates.s_age)
         text = "Any preferred age? Examples are\n\tyoung\n\tadult\n\told\nsay 'none' to search all"
@@ -53,14 +52,13 @@ async def age_handler(message):
 async def gender_handler(message):
     async with bot.retrieve_data(message.from_user.id, message.chat.id) as data:
         data['gender'] = message.text
-        category = data['category']
-        age = data['age']
-        gender = data['gender']
-        print(category, age, gender)
+        category = data['category'].strip().lower()
+        age = data['age'].strip().lower()
+        gender = data['gender'].strip().lower()
         if validate_search(category, age, gender):
             start = time.time()
-            searching_intro = f"Searching for: category = [{category.lower()}] age = [{age.lower()}] gender = [{gender.lower()}]"
-            result_list = search_pets(category.lower(), age.lower(), gender.lower())
+            searching_intro = f"Searching for: category = [{category}] age = [{age}] gender = [{gender}]"
+            result_list = search_pets(category, age, gender)
             found_intro = f"Found {len(result_list)} results!"
 
             print(f"Chat {message.chat.id} @ {datetime.now()}:\n\t{searching_intro}\n\t{found_intro}")
