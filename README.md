@@ -1,10 +1,10 @@
 # spca_scraper
 scrapes [SPCA](https://spca.org.sg) with conditional searching and returns a list of prospective pets up for adoption.
 
-Your use of this scraper is subject to [SPCA](https://spca.org.sg) policy and may be revoked at any time.
+Your use of this scraper is subject to [SPCA](https://spca.org.sg) security [policy](https://spca.org.sg/website-security-policy/) and may be revoked at any time.
 
 Use of this script requires a .env file with the token of the bot. You may generate one through @BotFather on Telegram.
-Otherwise, start the use of the bot via the /search command.
+Otherwise, start the use of the bot via the /search command by talking to it [here](https://t.me/spca_scraper_bot)
 This bot CURRENTLY does not have error handling i.e. incorrect input.
 
 telegram output:
