@@ -2,9 +2,12 @@ import requests
 from bs4 import BeautifulSoup
 
 base_page = f"https://spca.org.sg/services/adoption/"
-category_dict = {'none': '', 'cat': 7, 'dog': 8, 'guinea_pig': 34, 'hamster': 19, 'other': 100, 'rabbit': 29, 'terrapin': 80}
+category_dict = {'none': '', 'cat': 7, 'dog': 8, 'guinea_pig': 34, 'hamster': 19, 'other': 100, 'rabbit': 29,
+                 'terrapin': 80}
 age_dict = {'none': '', 'adult': 14, 'young': 12, 'old': 13}
 gender_dict = {'none': '', 'male': 'male', 'female': 'female'}
+
+
 def find_max_pages(category, age, gender):
     new_url = f"{base_page}?animal_keyword=&animaltype={category_dict[category]}&animalage={age_dict[age]}&animalgender={gender_dict[gender]}"
     print(f"Accessing {new_url}")
@@ -33,7 +36,7 @@ def find_max_pages(category, age, gender):
         # no results
 
 
-def search_pets(category, age, gender):
+def search_spca_pets(category, age, gender):
     if category.lower() == "guinea pig": category = "guinea_pig"
     end_results = []
     curr_page = 1
@@ -56,6 +59,8 @@ def search_pets(category, age, gender):
         curr_page += 1
     return end_results
 
+
 def validate_search(category, age, gender):
-    if category not in category_dict or age not in age_dict or gender not in gender_dict: return False
+    if category not in category_dict or age not in age_dict or gender not in gender_dict:
+        return False
     return True
