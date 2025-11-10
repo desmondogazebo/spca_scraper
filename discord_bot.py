@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from spca_scraper import search_spca_pets, validate_search
 from asd_scraper import search_asd_pets
-from cws_scraper import search_cws_pets
+# from cws_scraper import search_cws_pets
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -107,9 +107,6 @@ async def send_next_step(interaction, user_id, prompt, choices, field):
                                 description="\n".join([f"[{pet['name']}]({pet['url']})" for pet in results]),
                                 color=discord.Color.blue()
                             )
-                            # Use first pet image as thumbnail if available
-                            if results[0].get("img"):
-                                embed.set_thumbnail(url=results[0]["img"])
                             
                             # Add a footer summarizing the filters
                             embed.set_footer(text=chosen_conditions)
@@ -124,36 +121,32 @@ async def send_next_step(interaction, user_id, prompt, choices, field):
             # ASD multi-step logic
             elif state['option'] == "ASD":
                 if field == "hdb":
+                    # After HDB selection, ask for gender
                     genders = ['Male', 'Female', 'None']
                     await send_next_step(select_interaction, user_id, "Select gender:", genders, "gender")
                 elif field == "gender":
-                    results = await run_scraper(search_asd_pets, state['hdb'], state['gender'])
-                    chosen_conditions = f"HDB Approval: {state['hdb'].capitalize()}, Gender: {state['gender'].capitalize()}"
+                    # After gender selection, fetch pets and send in one embed
+                    results = await search_asd_pets(state['hdb'], state['gender'])
+
+                    chosen_conditions = (f"Category: {state['hdb'].capitalize()}, "
+                                            f"Gender: {state['gender'].capitalize()}")
                     if results:
-                        response = f"Found {len(results)} results for {chosen_conditions}:\n" + '\n'.join(results)
-                    else:
-                        response = f"No results found for {chosen_conditions}."
-                    await select_interaction.followup.send(response)
+                        embed = discord.Embed(
+                            title=f"Found {len(results)} pets for your search",
+                            description="\n".join([f"[{pet['name']}]({pet['url']})" for pet in results]),
+                            color=discord.Color.blue()
+                        )
+                        
+                        # Add a footer summarizing the filters
+                        embed.set_footer(text=chosen_conditions)
+                        await select_interaction.followup.send(embed=embed)                    
+
                     user_data.pop(user_id, None)
+
 
     view = discord.ui.View()
     view.add_item(NextSelect())
     await interaction.followup.send(prompt, view=view)
-
-async def send_spca_results(ctx, pets):
-    if not pets:
-        await ctx.send("No results found.")
-        return
-
-    for pet in pets:
-        embed = discord.Embed(
-            title=pet["name"],
-            url=pet["url"],
-            color=discord.Color.blue()
-        )
-        if pet["img"]:
-            embed.set_thumbnail(url=pet["img"])
-        await ctx.send(embed=embed)
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
