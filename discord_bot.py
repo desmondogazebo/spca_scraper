@@ -99,15 +99,27 @@ async def send_next_step(interaction, user_id, prompt, choices, field):
                     if validate_search(state['category'], state['age'], state['gender']):
                         results = await run_scraper(search_spca_pets, state['category'], state['age'], state['gender'])
                         chosen_conditions = (f"Category: {state['category'].capitalize()}, "
-                                             f"Age: {state['age'].capitalize()}, "
-                                             f"Gender: {state['gender'].capitalize()}")
+                                            f"Age: {state['age'].capitalize()}, "
+                                            f"Gender: {state['gender'].capitalize()}")
                         if results:
-                            response = f"Found {len(results)} results for {chosen_conditions}:\n" + '\n'.join(results)
+                            embed = discord.Embed(
+                                title=f"Found {len(results)} pets for your search",
+                                description="\n".join([f"[{pet['name']}]({pet['url']})" for pet in results]),
+                                color=discord.Color.blue()
+                            )
+                            # Use first pet image as thumbnail if available
+                            if results[0].get("img"):
+                                embed.set_thumbnail(url=results[0]["img"])
+                            
+                            # Add a footer summarizing the filters
+                            embed.set_footer(text=chosen_conditions)
+
+                            await select_interaction.followup.send(embed=embed)
                         else:
-                            response = f"No results found for {chosen_conditions}."
-                        await select_interaction.followup.send(response)
+                            await select_interaction.followup.send(f"No results found for {chosen_conditions}.")
                     else:
                         await select_interaction.followup.send("Invalid search criteria. Please start again.")
+
                     user_data.pop(user_id, None)
             # ASD multi-step logic
             elif state['option'] == "ASD":
@@ -127,3 +139,21 @@ async def send_next_step(interaction, user_id, prompt, choices, field):
     view = discord.ui.View()
     view.add_item(NextSelect())
     await interaction.followup.send(prompt, view=view)
+
+async def send_spca_results(ctx, pets):
+    if not pets:
+        await ctx.send("No results found.")
+        return
+
+    for pet in pets:
+        embed = discord.Embed(
+            title=pet["name"],
+            url=pet["url"],
+            color=discord.Color.blue()
+        )
+        if pet["img"]:
+            embed.set_thumbnail(url=pet["img"])
+        await ctx.send(embed=embed)
+
+if __name__ == "__main__":
+    bot.run(DISCORD_TOKEN)
