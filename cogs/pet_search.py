@@ -7,6 +7,7 @@ from modules.petScraper.pagination import PaginationView
 from modules.petScraper.spca_scraper import search_spca_pets, validate_search
 from modules.petScraper.asd_scraper import search_asd_pets
 from modules.petScraper.cws_scraper import search_cws_pets
+from modules.petScraper.sosd_scraper import search_sosd_pets
 
 
 
@@ -90,6 +91,7 @@ class SourceSelect(discord.ui.Select):
                 discord.SelectOption(label="SPCA", value="spca"),
                 discord.SelectOption(label="ASD", value="asd"),
                 discord.SelectOption(label="CWS", value="cws"),
+                discord.SelectOption(label="SOSD", value="sosd"),
             ]
         )
 
@@ -120,6 +122,12 @@ class SourceSelect(discord.ui.Select):
                 "CWS | All adoptable cats"
             )
             self.cog.clear_state(self.user_id)
+        elif source == "sosd":
+            await interaction.followup.send(
+                "Select HDB approval:",
+                view=SOSDGenderView(self.cog, self.user_id),
+                ephemeral=True
+            )
 
 
 # ---------- SPCA FLOW ----------
@@ -271,7 +279,73 @@ class ASDGenderButton(discord.ui.Button):
 
         self.cog.clear_state(user_id)
 
+# ---------- CWS FLOW ---------- 
+# COMPLETED, NO FLOW NEEDED
 
+
+# --------- SOSD FLOW ----------
+
+class SOSDGenderView(LockedView):
+    OPTIONS = ["Male", "Female", "Any"]
+
+    def __init__(self, cog, user_id):
+        super().__init__(cog, user_id)
+        for opt in self.OPTIONS:
+            self.add_item(SOSDGenderButton(opt, cog))
+
+class SOSDGenderButton(discord.ui.Button):
+    def __init__(self, value: str, cog):
+        super().__init__(label=value)
+        self.value = value
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        state = self.cog.get_state(user_id)
+        state["filters"]["gender"] = self.value if self.value != "Any" else None
+
+        await interaction.response.defer(ephemeral=True)
+        await interaction.followup.send(
+            "Select HDB approval:",
+            view=SOSDHDBView(self.cog, user_id),
+            ephemeral=True
+        )
+
+class SOSDHDBView(LockedView):
+    OPTIONS = ["Yes", "No", "Any"]
+
+    def __init__(self, cog, user_id):
+        super().__init__(cog, user_id)
+        for opt in self.OPTIONS:
+            self.add_item(SOSDHDBButton(opt, cog))
+
+class SOSDHDBButton(discord.ui.Button):
+    def __init__(self, value: str, cog):
+        super().__init__(label=value)
+        self.value = value
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        state = self.cog.get_state(user_id)
+        filters = state["filters"]
+
+        filters["hdb"] = self.value if self.value != "Any" else None
+
+        await interaction.response.defer(ephemeral=True)
+
+        pets = await search_sosd_pets(
+            gender=filters.get("gender"),
+            hdb=filters.get("hdb")
+        )
+
+        await self.cog.send_results(
+            interaction,
+            pets,
+            f"SOSD | {filters}"
+        )
+
+        self.cog.clear_state(user_id)
 
 
 # ---------- SETUP ----------
