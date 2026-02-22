@@ -18,11 +18,27 @@ class DOMAutomationRunner:
 
     def _run(self):
         self._playwright = sync_playwright().start()
-        self._browser = self._playwright.chromium.launch(
-            headless=False
+        USER_AGENT = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
         )
-        self._page = self._browser.new_page()
 
+        self._browser = self._playwright.chromium.launch(
+            headless=False,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+            ],
+        )
+
+        context = self._browser.new_context(
+            user_agent=USER_AGENT,
+            viewport={"width": 1366, "height": 768},
+            locale="en-US",
+            timezone_id="Asia/Singapore",
+        )
+
+        self._page = context.new_page()
         self._page.goto("https://www.tiktok.com/@mobot.sg/live")
 
         print("[DOM] Browser opened")
