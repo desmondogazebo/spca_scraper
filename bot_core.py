@@ -12,7 +12,7 @@ class MainBot(commands.Bot):
         # Core features
         await self.load_extension("cogs.pet_search")
 
-        # Automation / OCR
+        # Automation
         await self.load_extension("cogs.automation")
 
         # Sync slash commands once on startup

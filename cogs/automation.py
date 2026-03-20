@@ -1,46 +1,77 @@
+# cogs/automation.py
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
 import discord
-from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 
-from modules.automation.runner import DOMAutomationRunner
+import datetime
+
+from modules.freeSteam.free_steam_scraper import search_free_steam_games
+
+SEEN_FILE = Path("data/free_steam_seen.json")
+TARGET_CHANNEL_ID = 1437720250476134400  # replace this
 
 
-class AutomationCog(commands.Cog):
-    def __init__(self, bot):
+class Automation(commands.Cog):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.runner = DOMAutomationRunner()
+        self.free_steam_checker.start()
 
-    # ---------- SLASH COMMANDS ----------
+    def cog_unload(self):
+        self.free_steam_checker.cancel()
 
-    @app_commands.command(name="start_automation", description="Start OCR-based desktop automation")
-    async def start_automation(self, interaction: discord.Interaction):
-        # ACK IMMEDIATELY
-        await interaction.response.defer(ephemeral=True)
+    def load_seen_ids(self) -> set[str]:
+        if not SEEN_FILE.exists():
+            return set()
+        try:
+            data = json.loads(SEEN_FILE.read_text(encoding="utf-8"))
+            return set(data)
+        except Exception:
+            return set()
 
-        ok = self.runner.start()
-
-        await interaction.followup.send(
-            "OCR automation started ✅"
-            if ok
-            else "OCR automation is already running",
-            ephemeral=True
+    def save_seen_ids(self, ids: set[str]) -> None:
+        SEEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        SEEN_FILE.write_text(
+            json.dumps(sorted(ids), indent=2),
+            encoding="utf-8",
         )
 
-    @app_commands.command(name="stop_automation", description="Stop OCR-based desktop automation")
-    async def stop_automation(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
+    @tasks.loop(time=datetime.time(hour=10, minute=0))
+    async def free_steam_checker(self):
+        channel = self.bot.get_channel(TARGET_CHANNEL_ID)
+        if channel is None:
+            return
 
-        ok = self.runner.stop()
+        seen_ids = self.load_seen_ids()
+        games = await self.bot.loop.run_in_executor(None, search_free_steam_games)
 
-        await interaction.followup.send(
-            "OCR automation stopped 🛑"
-            if ok
-            else "OCR automation is not running",
-            ephemeral=True
+        new_games = [g for g in games if g["id"] not in seen_ids]
+        if not new_games:
+            return
+
+        embed = discord.Embed(
+            title="Free Steam games spotted",
+            description="\n".join(
+                f"[{g['name']}]({g['url']})" for g in new_games[:20]
+            ),
+            color=discord.Color.blue(),
         )
 
+        if len(new_games) > 20:
+            embed.set_footer(text=f"And {len(new_games) - 20} more.")
 
-# ---------- SETUP ----------
+        await channel.send(embed=embed)
 
-async def setup(bot):
-    await bot.add_cog(AutomationCog(bot))
+        seen_ids.update(g["id"] for g in new_games)
+        self.save_seen_ids(seen_ids)
+
+    @free_steam_checker.before_loop
+    async def before_free_steam_checker(self):
+        await self.bot.wait_until_ready()
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Automation(bot))
